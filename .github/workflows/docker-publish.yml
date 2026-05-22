@@ -1,0 +1,40 @@
+name: Publish API Docker Image
+
+on:
+  push:
+    branches: [ "main" ] # 当代码推送到 main 分支时触发
+    # 你还可以配置 tags: [ 'v*' ] 来在推送新版本标签时触发
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. 设置 QEMU，这是构建 ARM64 镜像的关键
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      # 2. 设置 Docker Buildx，用于创建和管理构建器
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录到 Docker Hub，使用前面创建的 Secrets
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. 构建并推送多架构镜像
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64 # 同时构建 amd64 和 arm64 架构
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/dailyhot-api-go:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/dailyhot-api-go:${{ github.sha }}
